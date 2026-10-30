@@ -471,4 +471,29 @@
 			});
 		});
 	})();
+	// Carrusel: las flechas desplazan la pista una diapositiva (y dan la vuelta en los extremos)
+	(function () {
+		var carrusel = document.getElementById('carrusel');
+		if (!carrusel) return;
+		var pista = carrusel.querySelector('.pista');
+		var izq = carrusel.querySelector('.flecha.izq');
+		var der = carrusel.querySelector('.flecha.der');
+		function paso() {
+			var diapo = pista.querySelector('.diapo');
+			var gap = parseFloat(getComputedStyle(pista).columnGap) || 0;
+			return diapo.getBoundingClientRect().width + gap;
+		}
+		function mover(dir) {
+			var fin = pista.scrollWidth - pista.clientWidth;
+			if (dir > 0 && pista.scrollLeft >= fin - 4) pista.scrollTo({ left: 0, behavior: 'smooth' });
+			else if (dir < 0 && pista.scrollLeft <= 4) pista.scrollTo({ left: fin, behavior: 'smooth' });
+			else pista.scrollBy({ left: dir * paso(), behavior: 'smooth' });
+		}
+		izq.addEventListener('click', function () { mover(-1); });
+		der.addEventListener('click', function () { mover(1); });
+		pista.addEventListener('keydown', function (e) {
+			if (e.key === 'ArrowLeft') { e.preventDefault(); mover(-1); }
+			if (e.key === 'ArrowRight') { e.preventDefault(); mover(1); }
+		});
+	})();
 </script></body></html>
