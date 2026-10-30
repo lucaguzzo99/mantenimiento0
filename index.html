@@ -299,17 +299,17 @@
 		overflow-x: auto;
 		scroll-snap-type: x mandatory;
 		scroll-behavior: smooth;
-		padding: 0.5rem calc(50% - 140px) 1rem;
+		--asoma: 3rem;
+		padding: 0.5rem var(--asoma) 1rem;
+		scroll-padding-inline: var(--asoma);
 		scrollbar-width: none;
-		-webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-		mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
 	}
 	.pista::-webkit-scrollbar {
 		display: none;
 	}
 	.diapo {
-		flex: 0 0 280px;
-		scroll-snap-align: center;
+		flex: 0 0 calc((100% - 2.5rem) / 3);
+		scroll-snap-align: start;
 		text-align: center;
 		padding: 0.75rem 0.75rem 1.25rem;
 	}
@@ -356,6 +356,9 @@
 		right: -1.3rem;
 	}
 	@media (max-width: 700px) {
+		.diapo {
+			flex-basis: calc((100% - 1.25rem) / 2);
+		}
 		.flecha.izq {
 			left: 0;
 		}
@@ -473,26 +476,43 @@
 			});
 		});
 	})();
-	// Carrusel: las flechas desplazan la pista una diapositiva (y dan la vuelta en los extremos)
+	// Carrusel infinito: copias antes y despues de las diapositivas, para que siempre asome una vecina a cada lado
 	(function () {
 		var carrusel = document.getElementById('carrusel');
 		if (!carrusel) return;
 		var pista = carrusel.querySelector('.pista');
-		var izq = carrusel.querySelector('.flecha.izq');
-		var der = carrusel.querySelector('.flecha.der');
-		function paso() {
-			var diapo = pista.querySelector('.diapo');
-			var gap = parseFloat(getComputedStyle(pista).columnGap) || 0;
-			return diapo.getBoundingClientRect().width + gap;
+		var originales = Array.prototype.slice.call(pista.querySelectorAll('.diapo'));
+		function copiar() {
+			return originales.map(function (d) {
+				var c = d.cloneNode(true);
+				c.setAttribute('aria-hidden', 'true');
+				return c;
+			});
 		}
-		function mover(dir) {
-			var fin = pista.scrollWidth - pista.clientWidth;
-			if (dir > 0 && pista.scrollLeft >= fin - 4) pista.scrollTo({ left: 0, behavior: 'smooth' });
-			else if (dir < 0 && pista.scrollLeft <= 4) pista.scrollTo({ left: fin, behavior: 'smooth' });
-			else pista.scrollBy({ left: dir * paso(), behavior: 'smooth' });
+		copiar().forEach(function (c) { pista.insertBefore(c, originales[0]); });
+		copiar().forEach(function (c) { pista.appendChild(c); });
+		function paso() { return originales[1].offsetLeft - originales[0].offsetLeft; }
+		function inicio() { return originales[0].offsetLeft - parseFloat(getComputedStyle(pista).paddingLeft); }
+		function saltar(x) {
+			pista.style.scrollBehavior = 'auto';
+			pista.scrollLeft = x;
+			pista.style.scrollBehavior = '';
 		}
-		izq.addEventListener('click', function () { mover(-1); });
-		der.addEventListener('click', function () { mover(1); });
+		saltar(inicio());
+		var espera;
+		pista.addEventListener('scroll', function () {
+			clearTimeout(espera);
+			espera = setTimeout(function () {
+				var largo = paso() * originales.length;
+				var base = inicio();
+				if (pista.scrollLeft < base - 2) saltar(pista.scrollLeft + largo);
+				else if (pista.scrollLeft >= base + largo - 2) saltar(pista.scrollLeft - largo);
+			}, 120);
+		});
+		window.addEventListener('resize', function () { saltar(inicio()); });
+		function mover(dir) { pista.scrollBy({ left: dir * paso(), behavior: 'smooth' }); }
+		carrusel.querySelector('.flecha.izq').addEventListener('click', function () { mover(-1); });
+		carrusel.querySelector('.flecha.der').addEventListener('click', function () { mover(1); });
 		pista.addEventListener('keydown', function (e) {
 			if (e.key === 'ArrowLeft') { e.preventDefault(); mover(-1); }
 			if (e.key === 'ArrowRight') { e.preventDefault(); mover(1); }
